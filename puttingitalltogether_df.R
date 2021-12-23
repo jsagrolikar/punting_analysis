@@ -106,7 +106,7 @@ max(filt_punt_events_df$frames_after_snap)
 
 aggregate(frame_id~punt_id, filt_punt_events_df)
 sort((filt_punt_events_df$frames_after_snap))
-for (frame_id in c(0:25)) {
+for (frame_id in c(1:25)) {
   frame_punt_events_df <- filt_punt_events_df[filt_punt_events_df$frames_after_snap==frame_id,]
   frame_punt_events_df<- frame_punt_events_df[order(frame_punt_events_df$y, frame_punt_events_df$x),]
   # punt2_frame0_punting_df <- punt2_frame0_df[punt2_frame0_df$possessionTeam==punt2_frame0_df$TeamAbbr,]
@@ -231,8 +231,25 @@ for (frame_id in c(0:25)) {
   iteration_scores$iteration_scores <- (iteration_scores$`number of clusters`/max(iteration_scores$`number of clusters`))+
     (iteration_scores$`average distance within clusters`/max(iteration_scores$`average distance within clusters`))
   mincluster <- iteration_scores[iteration_scores$iteration_scores==min(iteration_scores$iteration_scores),]$`number of clusters`
-  result <- information_list[[mincluster]]
-  print(frame_id)
-  print(result)
+  finalclusters <- information_list[[mincluster]]
+  result <- finalclusters
   
+  if (is.null(result)) {
+    break
+  } else {
+    for (i in 1:ncol(result)) {
+      for (j in 1:nrow(result)) {
+        if (is.na(result[j, i])) {
+          result[j, i] <- "0"
+        } else {
+          result[j, i] <- paste(as.character(all_punts[[3*as.numeric(result[j,i])]]$gameId[1]), "/", as.character(all_punts[[3*as.numeric(result[j,i])]]$playId[1]), sep="")
+        }
+      }
+    }
+    
+    dir <- "C:/Users/Jay Sagrolikar/punting_analysis/testing/"
+    filename <- paste(as.character(frame_id), "iteration.csv", sep="")
+    
+    write.csv(result, paste(dir, filename, sep=""), row.names = FALSE)
+  }
 }
