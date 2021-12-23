@@ -12,9 +12,6 @@ setwd(wd)
 # tracking_sample <- read.csv("tracking2020.csv")
 tracking_sample <- read.csv("2020_reduced.csv")
 tracking_sample$ï..time <- NULL
-games_df <- read.csv("games.csv")
-plays_df <- read.csv("plays.csv")
-players_df <- read.csv("players.csv")
 
 ## function for cleanliness later on
 punt_dist <- function(id1, id2, plist) {
