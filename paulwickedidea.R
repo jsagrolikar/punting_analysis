@@ -86,6 +86,12 @@ while (n>=14) {
   
   if (is.na(preserved_cluster)==FALSE) {
     
+    dist_mat[unpreserved_cluster,]*punts_in_unpreserved_cluster
+    dist_mat[,unpreserved_cluster]*punts_in_unpreserved_cluster
+    
+    dist_mat[preserved_cluster,-unpreserved_cluster]*punts_in_preserved_cluster
+    dist_mat[,preserved_cluster]*punts_in_preserved_cluster
+    
     dist_mat <- dist_mat[-unpreserved_cluster,-unpreserved_cluster]
     dist_vec1 <- c(rep(Inf,(n)))
     dist_vec2 <- c(rep(Inf,(n)))
@@ -148,6 +154,9 @@ while (n>=14) {
   index_vec[unpreserved_cluster:new_n] <- index_vec[unpreserved_cluster:new_n]+1
   index_vec <- index_vec[-unpreserved_cluster]
   
+  punts_in_unpreserved_cluster <- (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))
+  punts_in_preserved_cluster <- (length(as.vector(na.omit(info_df[,preserved_cluster_id]))))
+  
   ids_in_cluster <- c(as.vector(na.omit(info_df[,preserved_cluster_id])),as.vector(na.omit(info_df[,unpreserved_cluster_id])))
   info_df[,preserved_cluster_id] <- c(ids_in_cluster,rep(NA,new_n-length(ids_in_cluster)))
   info_df[,unpreserved_cluster_id] <- NA
@@ -179,7 +188,7 @@ while (n>=14) {
       total_cluster_distances <- total_cluster_distances + distancescore
       
     }
-
+    
     total_cluster_distances <- total_cluster_distances/ncol(cluster_df)
     
     iteration_scores[n-1, 1] <- ncol(cluster_df)
