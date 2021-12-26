@@ -1,4 +1,5 @@
 ## the big kahuna
+## run gc() before this
 
 library(ggplot2)
 library(dplyr)
@@ -12,7 +13,7 @@ memory.limit(size=2500)
 wd <- "C:/Users/Jay Sagrolikar/punting_analysis/data"
 setwd(wd)
 tracking_sample <- read.csv("all_punts.csv")
-tracking_sample <- tracking_sample[tracking_sample$gameId%in%(unique(tracking_sample$gameId)[1:50]),]
+# tracking_sample <- tracking_sample[tracking_sample$gameId%in%(unique(tracking_sample$gameId)[1:50]),]
 tracking_sample$ï..time <- NULL
 games_df <- read.csv("games.csv")
 plays_df <- read.csv("plays.csv")
@@ -31,25 +32,26 @@ punt_dist <- function(id1, id2, plist) {
 make_dist_mat <- function(p, plist) {
   ## calculates distance matrix for punts left in the list 
   dist_mat <- matrix(nrow=p, ncol=p)
-  for (i in 1:p) {
-    for (j in 1:p) {
-      dist_mat[i, j] <- punt_dist(i, j, plist)
-    }
+  # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) punt_dist(x, y, plist)))
+  for (i in 1:(p-1)) {
+    dist_mat[i, ] <- c(1:p)
+    vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(i, x, plist))
+    dist_mat[i, ] <- c(rep(Inf, i), vec)
   }
   ## removes zeroes
   dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
   return(dist_mat)
 }
 
-make_dist_mat2 <- function(p, idlist, plist) {
+make_dist_mat2 <- function(p, idlist, initmat) {
   ## calculates distance matrix for punts left in the list 
   dist_mat <- matrix(nrow=p, ncol=p)
+  im <- initmat
+  # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) if(x < y) { im[idlist[[x]], idlist[[y]]] } else { im[idlist[[y]], idlist[[x]]]}))
   for (i in 1:(p-1)) {
-    id1 <- idlist[[i]]
-    for (j in 1:(p-1)) {
-      id2 <- idlist[[j+1]]
-      dist_mat[i, j+1] <- punt_dist(id1, id2, plist)
-    }
+    dist_mat[i, ] <- c(1:p)
+    vec <- sapply(dist_mat[i, (i+1):p], function(x) if(i < x) { im[idlist[[i]], idlist[[x]]] } else { im[idlist[[x]], idlist[[i]]]})
+    dist_mat[i, ] <- c(rep(Inf, i), vec)
   }
   ## removes zeroes
   dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
@@ -124,7 +126,6 @@ for (frame_id in c(1:25)) {
   ## makes list containing 3 punt dataframes for every 1 in sample
   punts_lists <- list()
   for (i in 1:n) {
-    print(i)
     spec_punt_df <- frame_punt_events_df[frame_punt_events_df$gameId==punt_index_df[i,]$gameId & frame_punt_events_df$playId==punt_index_df[i,]$playId,]
     spec_punt_df$punt_id <- i
     spec_punt_df <- spec_punt_df[order(spec_punt_df$y,spec_punt_df$x),]
@@ -136,7 +137,9 @@ for (frame_id in c(1:25)) {
     spec_punt_receiving_df <- spec_punt_receiving_df[order(spec_punt_receiving_df$y,spec_punt_receiving_df$x),]
     punts_lists <- append(punts_lists, list(spec_punt_df, spec_punt_punting_df, spec_punt_receiving_df))
   }
+  print("list complete")
   all_punts <- punts_lists
+  # punts_lists <- all_punts
   
   index_vec <- c(rep(0,n)) #needs to be outside loop 
   info_df <- as.data.frame(matrix(NA, ncol = n, nrow = n))
@@ -149,27 +152,22 @@ for (frame_id in c(1:25)) {
   information_list <- list()
   preserved_cluster <- NA
   
-  while (n>=313) {
+  while (n>=2) {
     
     if (is.na(preserved_cluster)==FALSE) {
       
       dist_mat <- dist_mat[-unpreserved_cluster,-unpreserved_cluster]
-      dist_vec1 <- c(rep(Inf,(n)))
-      dist_vec2 <- c(rep(Inf,(n)))
-      for (i in 1:preserved_cluster) {
-        print(i)
-        dist_vec1[i] <- punt_dist(preserved_cluster, i, punts_lists)
-      }
-      for (i in preserved_cluster:n) {
-        print(i)
-        dist_vec2[i] <- punt_dist(preserved_cluster, i, punts_lists)
-      }
+      dist_vec1 <- c(1:(n))
+      dist_vec1 <- sapply(dist_vec1, function(x) punt_dist(preserved_cluster, x, punts_lists))
+      dist_vec2 <- c(rep(Inf, (preserved_cluster-1)), dist_vec1[preserved_cluster:(n)])
       dist_mat[,preserved_cluster] <- dist_vec1
       dist_mat[preserved_cluster,] <- dist_vec2
       dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
       
     } else {
-      dist_mat <- make_dist_mat(n, punts_lists)
+      init_mat <- make_dist_mat(n, punts_lists)
+      dist_mat <- init_mat
+      print("init matrix complete")
     }
     
     loc_mat <- as.data.frame(which(dist_mat==min(dist_mat), arr.ind=TRUE))
@@ -178,40 +176,40 @@ for (frame_id in c(1:25)) {
     
     preserved_cluster <- min(c(mincol, minrow))
     unpreserved_cluster <- max(c(mincol, minrow))
+    preserved_cluster_id <- preserved_cluster+index_vec[preserved_cluster]
+    unpreserved_cluster_id <- unpreserved_cluster+index_vec[unpreserved_cluster]
     
     ## takes mean of two closest punts and sets it as new value for the first punt
     ## e.g. if punt 6 and 12 are closest, takes the means of x and y and updates punt 6 with new values
-    punts_lists[[3*preserved_cluster]]$x <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster])))+length(as.vector(na.omit(info_df[,unpreserved_cluster])))))*
-      ((length(as.vector(na.omit(info_df[,preserved_cluster]))))*punts_lists[[3*preserved_cluster]]$x + 
-         (length(as.vector(na.omit(info_df[,unpreserved_cluster]))))*punts_lists[[3*unpreserved_cluster]]$x)
+    punts_lists[[3*preserved_cluster]]$x <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster_id])))+length(as.vector(na.omit(info_df[,unpreserved_cluster_id])))))*
+      ((length(as.vector(na.omit(info_df[,preserved_cluster_id]))))*punts_lists[[3*preserved_cluster]]$x + 
+         (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))*punts_lists[[3*unpreserved_cluster]]$x)
     
-    punts_lists[[3*preserved_cluster]]$y <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster])))+length(as.vector(na.omit(info_df[,unpreserved_cluster])))))*
-      ((length(as.vector(na.omit(info_df[,preserved_cluster]))))*punts_lists[[3*preserved_cluster]]$y + 
-         (length(as.vector(na.omit(info_df[,unpreserved_cluster]))))*punts_lists[[3*unpreserved_cluster]]$y)
+    punts_lists[[3*preserved_cluster]]$y <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster_id])))+length(as.vector(na.omit(info_df[,unpreserved_cluster_id])))))*
+      ((length(as.vector(na.omit(info_df[,preserved_cluster_id]))))*punts_lists[[3*preserved_cluster]]$y + 
+         (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))*punts_lists[[3*unpreserved_cluster]]$y)
     
-    punts_lists[[3*preserved_cluster-1]]$x <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster-1])))+length(as.vector(na.omit(info_df[,unpreserved_cluster-1])))))*
-      ((length(as.vector(na.omit(info_df[,preserved_cluster-1]))))*punts_lists[[3*preserved_cluster-1]]$x + 
-         (length(as.vector(na.omit(info_df[,unpreserved_cluster-1]))))*punts_lists[[3*unpreserved_cluster-1]]$x)
+    punts_lists[[3*preserved_cluster-1]]$x <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster_id])))+length(as.vector(na.omit(info_df[,unpreserved_cluster_id])))))*
+      ((length(as.vector(na.omit(info_df[,preserved_cluster_id]))))*punts_lists[[3*preserved_cluster-1]]$x + 
+         (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))*punts_lists[[3*unpreserved_cluster-1]]$x)
     
-    punts_lists[[3*preserved_cluster-1]]$y <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster-1])))+length(as.vector(na.omit(info_df[,unpreserved_cluster-1])))))*
-      ((length(as.vector(na.omit(info_df[,preserved_cluster-1]))))*punts_lists[[3*preserved_cluster-1]]$y + 
-         (length(as.vector(na.omit(info_df[,unpreserved_cluster-1]))))*punts_lists[[3*unpreserved_cluster-1]]$y)
+    punts_lists[[3*preserved_cluster-1]]$y <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster_id])))+length(as.vector(na.omit(info_df[,unpreserved_cluster_id])))))*
+      ((length(as.vector(na.omit(info_df[,preserved_cluster_id]))))*punts_lists[[3*preserved_cluster-1]]$y + 
+         (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))*punts_lists[[3*unpreserved_cluster-1]]$y)
     
-    punts_lists[[3*preserved_cluster-2]]$x <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster-2])))+length(as.vector(na.omit(info_df[,unpreserved_cluster-2])))))*
-      ((length(as.vector(na.omit(info_df[,preserved_cluster-2]))))*punts_lists[[3*preserved_cluster-2]]$x + 
-         (length(as.vector(na.omit(info_df[,unpreserved_cluster-2]))))*punts_lists[[3*unpreserved_cluster-2]]$x)
+    punts_lists[[3*preserved_cluster-2]]$x <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster_id])))+length(as.vector(na.omit(info_df[,unpreserved_cluster_id])))))*
+      ((length(as.vector(na.omit(info_df[,preserved_cluster_id]))))*punts_lists[[3*preserved_cluster-2]]$x + 
+         (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))*punts_lists[[3*unpreserved_cluster-2]]$x)
     
-    punts_lists[[3*preserved_cluster-2]]$y <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster-2])))+length(as.vector(na.omit(info_df[,unpreserved_cluster-2])))))*
-      ((length(as.vector(na.omit(info_df[,preserved_cluster-2]))))*punts_lists[[3*preserved_cluster-2]]$y + 
-         (length(as.vector(na.omit(info_df[,unpreserved_cluster-2]))))*punts_lists[[3*unpreserved_cluster-2]]$y)
+    punts_lists[[3*preserved_cluster-2]]$y <- (1/(length(as.vector(na.omit(info_df[,preserved_cluster_id])))+length(as.vector(na.omit(info_df[,unpreserved_cluster_id])))))*
+      ((length(as.vector(na.omit(info_df[,preserved_cluster_id]))))*punts_lists[[3*preserved_cluster-2]]$y + 
+         (length(as.vector(na.omit(info_df[,unpreserved_cluster_id]))))*punts_lists[[3*unpreserved_cluster-2]]$y)
     
     ## removes latter punt (12 in example above)
     punts_lists <- punts_lists[-(3*unpreserved_cluster)]
     punts_lists <- punts_lists[-(3*unpreserved_cluster-1)]
     punts_lists <- punts_lists[-(3*unpreserved_cluster-2)]
     
-    preserved_cluster_id <- preserved_cluster+index_vec[preserved_cluster]
-    unpreserved_cluster_id <- unpreserved_cluster+index_vec[unpreserved_cluster]
     index_vec[unpreserved_cluster:new_n] <- index_vec[unpreserved_cluster:new_n]+1
     index_vec <- index_vec[-unpreserved_cluster]
     
@@ -226,39 +224,33 @@ for (frame_id in c(1:25)) {
     
     cluster_df <- info_df[,colSums(is.na(info_df))<nrow(info_df)]
     information_list[[n-1]] <- as.data.frame(cluster_df)
-    # information_list <- append(information_list, as.data.frame(cluster_df))
+    nonzero_clusters <- as.data.frame(cluster_df[,colSums(is.na(cluster_df))<(nrow(cluster_df)-1)])
     total_cluster_distances <- 0
-    if (!is.null(ncol(cluster_df))) {
-      for (i in 1:ncol(cluster_df)) {
-        punt_ids <- list()
-        distancescore <- 0
-        for (j in 1:nrow(cluster_df)) {
-          punt_ids <- append(punt_ids, cluster_df[j, i])
-        }
-        punt_ids <- na.omit.list(punt_ids)
-        if (length(punt_ids) <= 1) {
-          cluster_dist <- 0
-        } else {
-          cluster_mat <- make_dist_mat2(length(punt_ids), punt_ids, all_punts)
-          cluster_dist <- mean(cluster_mat[is.finite(cluster_mat)])
-        }
-        distancescore <- distancescore + cluster_dist
-        total_cluster_distances <- total_cluster_distances + distancescore
-        
-      }
+    if (!is.null(ncol(nonzero_clusters))) {
       
-      total_cluster_distances <- total_cluster_distances/ncol(cluster_df)
+      cluster_dist <- apply(nonzero_clusters, 2,
+                            function(x)
+                              mean(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], init_mat)[is.finite(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], init_mat))]))
       
-      iteration_scores[n-1, 1] <- ncol(cluster_df)
-      iteration_scores[n-1, 2] <- total_cluster_distances
-      iteration_scores$total_distance <- iteration_scores$`number of clusters`*iteration_scores$`average distance within clusters`
+      # cluster_dist <- c(1:ncol(nonzero_clusters))
+      # for (i in 1:ncol(nonzero_clusters)) {
+      #   cluster_dist[i] <- mean(make_dist_mat2(length(na.omit(nonzero_clusters[,i])), nonzero_clusters[,i][!is.na(nonzero_clusters[,i])], init_mat)[is.finite(make_dist_mat2(length(na.omit(nonzero_clusters[,i])), nonzero_clusters[,i][!is.na(nonzero_clusters[,i])], init_mat))])
+      # }
       
+      total_cluster_distances <- sum(cluster_dist)
+      
+    } else {
+        total_cluster_distances <- punt_dist(nonzero_clusters[1], nonzero_clusters[2], all_punts)
     }
+      
+    total_cluster_distances <- total_cluster_distances/ncol(cluster_df)
+      
+    iteration_scores[n-1, 1] <- ncol(cluster_df)
+    iteration_scores[n-1, 2] <- total_cluster_distances
+    iteration_scores$total_distance <- iteration_scores$`number of clusters`*iteration_scores$`average distance within clusters`
     
     n <- n-1
-    print("internal iteration")
     print(n)
-    
     
   }
   
@@ -285,7 +277,6 @@ for (frame_id in c(1:25)) {
     filename <- paste(as.character(frame_id), "iteration.csv", sep="")
     print("Frame Iteration")
     print(frame_id)
-    print(sys.time())
     write.csv(result, paste(dir, filename, sep=""), row.names = FALSE)
   }
 }
