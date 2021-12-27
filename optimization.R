@@ -112,7 +112,7 @@ max(filt_punt_events_df$frames_after_snap)
 
 ## aggregate(frame_id~punt_id, filt_punt_events_df)
 sort((filt_punt_events_df$frames_after_snap))
-for (frame_id in c(1:25)) {
+for (frame_id in c(2:25)) {
   frame_punt_events_df <- filt_punt_events_df[filt_punt_events_df$frames_after_snap==frame_id,]
   frame_punt_events_df<- frame_punt_events_df[order(frame_punt_events_df$y, frame_punt_events_df$x),]
   # punt2_frame0_punting_df <- punt2_frame0_df[punt2_frame0_df$possessionTeam==punt2_frame0_df$TeamAbbr,]
@@ -222,8 +222,8 @@ for (frame_id in c(1:25)) {
       iteration_scores[1, 2] <- mean(dist_mat[is.finite(dist_mat)])
     }
     
-    cluster_df <- info_df[,colSums(is.na(info_df))<nrow(info_df)]
-    information_list[[n-1]] <- as.data.frame(cluster_df)
+    cluster_df <- as.data.frame(info_df[,colSums(is.na(info_df))<nrow(info_df)])
+    information_list[[n-1]] <- cluster_df
     nonzero_clusters <- as.data.frame(cluster_df[,colSums(is.na(cluster_df))<(nrow(cluster_df)-1)])
     total_cluster_distances <- 0
     if (!is.null(ncol(nonzero_clusters))) {
@@ -250,7 +250,6 @@ for (frame_id in c(1:25)) {
     iteration_scores$total_distance <- iteration_scores$`number of clusters`*iteration_scores$`average distance within clusters`
     
     n <- n-1
-    print(n)
     
   }
   
