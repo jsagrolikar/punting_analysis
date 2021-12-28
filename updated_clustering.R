@@ -5,15 +5,6 @@ library(data.table)
 library(cluster)
 library(tidyverse)
 
-### run clustering_scratchwork.R before this
-
-library(ggplot2)
-library(dplyr)
-library(gtools)
-library(data.table)
-library(cluster)
-library(tidyverse)
-
 wd <- "C:/Users/Jay Sagrolikar/punting_analysis/data"
 setwd(wd)
 # tracking_sample <- read.csv("tracking2020.csv")
@@ -143,29 +134,33 @@ punt_dist <- function(id1, id2, plist) {
 make_dist_mat <- function(p, plist) {
   ## calculates distance matrix for punts left in the list 
   dist_mat <- matrix(nrow=p, ncol=p)
-  dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) punt_dist(x, y, plist)))
-  # for (i in 1:(p-1)) {
-  #   vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(i, x, plist))
-  #   dist_mat[i, ] <- c(rep(Inf, i), vec)
-  # }
+  # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) punt_dist(x, y, plist)))
+  for (i in 1:(p-1)) {
+    dist_mat[i, ] <- c(1:p)
+    vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(i, x, plist))
+    dist_mat[i, ] <- c(rep(Inf, i), vec)
+  }
   ## removes zeroes
   dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
   return(dist_mat)
 }
 
-make_dist_mat2 <- function(p, idlist, plist, initmat) {
+clusterdistance <- function(p, idlist, initmat) {
   ## calculates distance matrix for punts left in the list 
   dist_mat <- matrix(nrow=p, ncol=p)
   im <- initmat
-  dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) if(x < y) { im[x, y] } else { im[y, x] }))
+  cluster_mat <- im[idlist, idlist]
+  cluster_mat[cluster_mat==Inf] <- 0
+  cluster_distance <- mean(cluster_mat)
+  # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) if(x < y) { im[idlist[[x]], idlist[[y]]] } else { im[idlist[[y]], idlist[[x]]]}))
   # for (i in 1:(p-1)) {
   #   dist_mat[i, ] <- c(1:p)
-  #   vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(idlist[[i]], idlist[[x]], plist))
+  #   vec <- sapply(dist_mat[i, (i+1):p], function(x) if(i < x) { im[idlist[[i]], idlist[[x]]] } else { im[idlist[[x]], idlist[[i]]]})
   #   dist_mat[i, ] <- c(rep(Inf, i), vec)
   # }
   ## removes zeroes
-  dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
-  return(dist_mat)
+  
+  return(cluster_distance)
 }
 
 na.omit.list <- function(y) { 
@@ -272,22 +267,23 @@ while (n>=2) {
     iteration_scores[1, 2] <- mean(dist_mat[is.finite(dist_mat)])
   }
   
-  cluster_df <- info_df[,colSums(is.na(info_df))<nrow(info_df)]
-  information_list[[n-1]] <- as.data.frame(cluster_df)
+  cluster_df <- as.data.frame(info_df[,colSums(is.na(info_df))<nrow(info_df)])
+  information_list[[n-1]] <- cluster_df
   nonzero_clusters <- as.data.frame(cluster_df[,colSums(is.na(cluster_df))<(nrow(cluster_df)-1)])
   total_cluster_distances <- 0
   if (!is.null(ncol(nonzero_clusters))) {
     
-    cluster_dist <- apply(nonzero_clusters, 2, 
-                          function(x) 
-                            mean(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], all_punts, init_mat)[is.finite(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], all_punts, init_mat))]))
+    cluster_dist <- apply(nonzero_clusters, 2, function(x) clusterdistance(length(na.omit(x)), na.omit(x), init_mat))
+    
+    # cluster_dist <- c(1:ncol(nonzero_clusters))
+    # for (i in 1:ncol(nonzero_clusters)) {
+    #   cluster_dist[i] <- mean(make_dist_mat2(length(na.omit(nonzero_clusters[,i])), nonzero_clusters[,i][!is.na(nonzero_clusters[,i])], init_mat)[is.finite(make_dist_mat2(length(na.omit(nonzero_clusters[,i])), nonzero_clusters[,i][!is.na(nonzero_clusters[,i])], init_mat))])
+    # }
     
     total_cluster_distances <- sum(cluster_dist)
     
   } else {
-    if (!is.null(ncol(cluster_df))) {
-      total_cluster_distances <- punt_dist(nonzero_clusters[1], nonzero_clusters[2], all_punts)
-    }
+    total_cluster_distances <- punt_dist(nonzero_clusters[1], nonzero_clusters[2], all_punts)
   }
   
   total_cluster_distances <- total_cluster_distances/ncol(cluster_df)
@@ -297,7 +293,6 @@ while (n>=2) {
   iteration_scores$total_distance <- iteration_scores$`number of clusters`*iteration_scores$`average distance within clusters`
   
   n <- n-1
-  print(n)
   
 }
 
