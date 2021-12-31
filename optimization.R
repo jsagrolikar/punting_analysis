@@ -43,19 +43,37 @@ make_dist_mat <- function(p, plist) {
   return(dist_mat)
 }
 
-make_dist_mat2 <- function(p, idlist, initmat) {
+# make_dist_mat2 <- function(p, idlist, initmat) {
+#   ## calculates distance matrix for punts left in the list 
+#   dist_mat <- matrix(nrow=p, ncol=p)
+#   im <- initmat
+#   # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) if(x < y) { im[idlist[[x]], idlist[[y]]] } else { im[idlist[[y]], idlist[[x]]]}))
+#   for (i in 1:(p-1)) {
+#     dist_mat[i, ] <- c(1:p)
+#     vec <- sapply(dist_mat[i, (i+1):p], function(x) if(i < x) { im[idlist[[i]], idlist[[x]]] } else { im[idlist[[x]], idlist[[i]]]})
+#     dist_mat[i, ] <- c(rep(Inf, i), vec)
+#   }
+#   ## removes zeroes
+#   dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
+#   return(dist_mat)
+# }
+
+clusterdistance <- function(p, idlist, initmat) {
   ## calculates distance matrix for punts left in the list 
   dist_mat <- matrix(nrow=p, ncol=p)
   im <- initmat
+  cluster_mat <- im[idlist, idlist]
+  cluster_mat[cluster_mat==Inf] <- 0
+  cluster_distance <- mean(cluster_mat)
   # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) if(x < y) { im[idlist[[x]], idlist[[y]]] } else { im[idlist[[y]], idlist[[x]]]}))
-  for (i in 1:(p-1)) {
-    dist_mat[i, ] <- c(1:p)
-    vec <- sapply(dist_mat[i, (i+1):p], function(x) if(i < x) { im[idlist[[i]], idlist[[x]]] } else { im[idlist[[x]], idlist[[i]]]})
-    dist_mat[i, ] <- c(rep(Inf, i), vec)
-  }
+  # for (i in 1:(p-1)) {
+  #   dist_mat[i, ] <- c(1:p)
+  #   vec <- sapply(dist_mat[i, (i+1):p], function(x) if(i < x) { im[idlist[[i]], idlist[[x]]] } else { im[idlist[[x]], idlist[[i]]]})
+  #   dist_mat[i, ] <- c(rep(Inf, i), vec)
+  # }
   ## removes zeroes
-  dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
-  return(dist_mat)
+  
+  return(cluster_distance)
 }
 
 na.omit.list <- function(y) { 
@@ -112,7 +130,7 @@ max(filt_punt_events_df$frames_after_snap)
 
 ## aggregate(frame_id~punt_id, filt_punt_events_df)
 sort((filt_punt_events_df$frames_after_snap))
-for (frame_id in c(2:25)) {
+for (frame_id in c(1:14)) {
   frame_punt_events_df <- filt_punt_events_df[filt_punt_events_df$frames_after_snap==frame_id,]
   frame_punt_events_df<- frame_punt_events_df[order(frame_punt_events_df$y, frame_punt_events_df$x),]
   # punt2_frame0_punting_df <- punt2_frame0_df[punt2_frame0_df$possessionTeam==punt2_frame0_df$TeamAbbr,]
@@ -228,9 +246,11 @@ for (frame_id in c(2:25)) {
     total_cluster_distances <- 0
     if (!is.null(ncol(nonzero_clusters))) {
       
-      cluster_dist <- apply(nonzero_clusters, 2,
-                            function(x)
-                              mean(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], init_mat)[is.finite(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], init_mat))]))
+      cluster_dist <- apply(nonzero_clusters, 2, function(x) clusterdistance(length(na.omit(x)), na.omit(x), init_mat))
+      
+      # cluster_dist <- apply(nonzero_clusters, 2,
+      #                       function(x)
+      #                         mean(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], init_mat)[is.finite(make_dist_mat2(length(na.omit(x)), x[!is.na(x)], init_mat))]))
       
       # cluster_dist <- c(1:ncol(nonzero_clusters))
       # for (i in 1:ncol(nonzero_clusters)) {
@@ -259,6 +279,13 @@ for (frame_id in c(2:25)) {
   finalclusters <- information_list[[mincluster]]
   result <- finalclusters
   
+  clusters_to_save <- (iteration_scores[order(iteration_scores$iteration_scores),]$`number of clusters`)[1:100]
+  sdir <- "C:/Users/Jay Sagrolikar/punting_analysis/testing/100thplace"
+  for(i in clusters_to_save) { 
+    fname <- paste(as.character(frame_id), "_", as.character(which(clusters_to_save==i)[1]), "scorer.csv")
+    write.csv(information_list[[i]], paste(sdir, fname, sep=""), row.names = FALSE)
+  }
+  
   if (is.null(result)) {
     break
   } else {
@@ -274,8 +301,10 @@ for (frame_id in c(2:25)) {
     
     dir <- "C:/Users/Jay Sagrolikar/punting_analysis/testing/"
     filename <- paste(as.character(frame_id), "iteration.csv", sep="")
+    fname2 <- paste(as.character(frame_id), "scores.csv")
     print("Frame Iteration")
     print(frame_id)
-    write.csv(result, paste(dir, filename, sep=""), row.names = FALSE)
+    # write.csv(result, paste(dir, filename, sep=""), row.names = FALSE)
+    write.csv(iteration_scores, paste(dir, fname2, sep=""), row.names = FALSE)
   }
 }
