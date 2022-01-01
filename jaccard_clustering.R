@@ -28,13 +28,17 @@ circle_intersection <- function(x1, y1, r1, x2, y2, r2){
 
 jaccard <- function(id1, id2, plist) {
   j_acc <- 0
+  r <- 3
   for (i in 1:10) {
     px <- plist[[3*id1-1]][i, ]$x
     py <- plist[[3*id1-1]][i, ]$y
     pts <- plist[[3*id2-1]]
-    j_acc <- j_acc + sum(apply(pts, 1, function(z) (circle_intersection(as.numeric(z["x"]), as.numeric(z["y"]), 1, px, py, 1))/(pi*18)))
+    px2 <- plist[[3*id1]][i, ]$x
+    py2 <- plist[[3*id1]][i, ]$y
+    pts2 <- plist[[3*id2]]
+    j_acc <- j_acc + sum(apply(pts, 1, function(z) (circle_intersection(as.numeric(z["x"]), as.numeric(z["y"]), 1+r*abs(as.numeric(z["x"])), px, py, 1+r*abs(px)))))
+    j_acc <- j_acc + sum(apply(pts2, 1, function(z) (circle_intersection(as.numeric(z["x"]), as.numeric(z["y"]), 1+r*abs(as.numeric(z["x"])), px2, py2, 1+r*abs(px2)))))
   }
-  j_acc <- j_acc / 121
   return(j_acc)
 }
 
@@ -44,39 +48,39 @@ mdmat <- function(p, plist) {
   for (i in 1:(p-1)) {
     dist_mat[i, ] <- c(1:p)
     vec <- sapply(dist_mat[i, (i+1):p], function(x) jaccard(i, x, plist))
-    dist_mat[i, ] <- c(rep(Inf, i), vec)
+    dist_mat[i, ] <- c(rep(0, i), vec)
   }
   ## removes zeroes
-  dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
+  dist_mat[lower.tri(dist_mat, diag=TRUE)] <- 0
   return(dist_mat)
 }
 
 ## clusters sample into 1 group step-by-step
 ## currently prints distance matrices as we go
 
-## function for cleanliness later on
-punt_dist <- function(id1, id2, plist) {
-  total_cluster_distance <- (sqrt(((plist[[(3*id1)-1]]$x-plist[[(3*id2)-1]]$x)^2)+((plist[[(3*id1)-1]]$y-plist[[(3*id2)-1]]$y)^2)))+
-    (sqrt(((plist[[(3*id1)-0]]$x-plist[[(3*id2)-0]]$x)^2)+((plist[[(3*id1)-0]]$y-plist[[(3*id2)-0]]$y)^2)))
-  # print(total_cluster_distance)
-  # print(sum(total_cluster_distance))
-  # summed_cluster_distance <- (unname(tapply(total_cluster_distance, (seq_along(total_cluster_distance)-1) %/% 11, sum)))
-  return(sum(total_cluster_distance))
-}
+# ## function for cleanliness later on
+# punt_dist <- function(id1, id2, plist) {
+#   total_cluster_distance <- (sqrt(((plist[[(3*id1)-1]]$x-plist[[(3*id2)-1]]$x)^2)+((plist[[(3*id1)-1]]$y-plist[[(3*id2)-1]]$y)^2)))+
+#     (sqrt(((plist[[(3*id1)-0]]$x-plist[[(3*id2)-0]]$x)^2)+((plist[[(3*id1)-0]]$y-plist[[(3*id2)-0]]$y)^2)))
+#   # print(total_cluster_distance)
+#   # print(sum(total_cluster_distance))
+#   # summed_cluster_distance <- (unname(tapply(total_cluster_distance, (seq_along(total_cluster_distance)-1) %/% 11, sum)))
+#   return(sum(total_cluster_distance))
+# }
 
-make_dist_mat <- function(p, plist) {
-  ## calculates distance matrix for punts left in the list 
-  dist_mat <- matrix(nrow=p, ncol=p)
-  # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) punt_dist(x, y, plist)))
-  for (i in 1:(p-1)) {
-    dist_mat[i, ] <- c(1:p)
-    vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(i, x, plist))
-    dist_mat[i, ] <- c(rep(Inf, i), vec)
-  }
-  ## removes zeroes
-  dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
-  return(dist_mat)
-}
+# make_dist_mat <- function(p, plist) {
+#   ## calculates distance matrix for punts left in the list 
+#   dist_mat <- matrix(nrow=p, ncol=p)
+#   # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) punt_dist(x, y, plist)))
+#   for (i in 1:(p-1)) {
+#     dist_mat[i, ] <- c(1:p)
+#     vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(i, x, plist))
+#     dist_mat[i, ] <- c(rep(Inf, i), vec)
+#   }
+#   ## removes zeroes
+#   dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
+#   return(dist_mat)
+# }
 
 clusterdistance <- function(p, idlist, initmat) {
   ## calculates distance matrix for punts left in the list 
@@ -104,6 +108,7 @@ wd <- "C:/Users/Jay Sagrolikar/punting_analysis/data"
 setwd(wd)
 # tracking_sample <- read.csv("tracking2020.csv")
 tracking_sample <- read.csv("2020_reduced.csv")
+# tracking_sample <- tracking_sample[tracking_sample$playId %in% unique(tracking_sample$playId)[1:220],]
 tracking_sample$ï..time <- NULL
 games_df <- read.csv("games.csv")
 plays_df <- read.csv("plays.csv")
@@ -169,13 +174,14 @@ for (i in 1:n) {
   spec_punt_df$punt_id <- i
   spec_punt_df <- spec_punt_df[order(spec_punt_df$x),]
   spec_punt_df <- spec_punt_df[-c(1, 22), ]
-  spec_punt_punting_df <- spec_punt_df[spec_punt_df$possessionTeam==spec_punt_df$TeamAbbr,]
+  spec_punt_home_df <- spec_punt_df[spec_punt_df$team=="home",]
+  spec_punt_away_df <- spec_punt_df[spec_punt_df$team=="away",]
   # spec_punt_punting_df <- rbind(spec_punt_punting_df[spec_punt_punting_df$position=="P",],spec_punt_punting_df[spec_punt_punting_df$position!="P",])
   # spec_punt_punting_df <- spec_punt_punting_df[order(spec_punt_punting_df$y,spec_punt_punting_df$x),]
-  spec_punt_receiving_df <- spec_punt_df[spec_punt_df$possessionTeam!=spec_punt_df$TeamAbbr,]
+  # spec_punt_receiving_df <- spec_punt_df[spec_punt_df$possessionTeam!=spec_punt_df$TeamAbbr,]
   # spec_punt_receiving_df <- rbind(spec_punt_receiving_df[spec_punt_receiving_df$x==max(spec_punt_receiving_df$x),],spec_punt_receiving_df[spec_punt_receiving_df$x!=max(spec_punt_receiving_df$x),])
   # spec_punt_receiving_df <- spec_punt_receiving_df[order(spec_punt_receiving_df$y,spec_punt_receiving_df$x),]
-  punts_lists <- append(punts_lists, list(spec_punt_df, spec_punt_punting_df, spec_punt_receiving_df))
+  punts_lists <- append(punts_lists, list(spec_punt_df, spec_punt_home_df, spec_punt_away_df))
 }
 all_punts <- punts_lists
 
@@ -196,19 +202,20 @@ while (n>=2) {
     
     dist_mat <- dist_mat[-unpreserved_cluster,-unpreserved_cluster]
     dist_vec1 <- c(1:(n))
-    dist_vec1 <- sapply(dist_vec1, function(x) punt_dist(preserved_cluster, x, punts_lists))
-    dist_vec2 <- c(rep(Inf, (preserved_cluster-1)), dist_vec1[preserved_cluster:(n)])
+    dist_vec1 <- sapply(dist_vec1, function(x) (mean(init_mat[ids_in_cluster, x])+mean(init_mat[x, ids_in_cluster]))^(1-((length(ids_in_cluster))/(new_n/2))))
+    dist_vec2 <- c(rep(0, (preserved_cluster-1)), dist_vec1[preserved_cluster:(n)])
     dist_mat[,preserved_cluster] <- dist_vec1
     dist_mat[preserved_cluster,] <- dist_vec2
-    dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
+    dist_mat[lower.tri(dist_mat, diag=TRUE)] <- 0
     
   } else {
     init_mat <- mdmat(n, punts_lists)
+    init_mat[init_mat==Inf] <- 0
     dist_mat <- init_mat
     print("init matrix complete")
   }
   
-  loc_mat <- as.data.frame(which(dist_mat==min(dist_mat), arr.ind=TRUE))
+  loc_mat <- as.data.frame(which(dist_mat==max(dist_mat), arr.ind=TRUE))
   minrow <- as.numeric(loc_mat$row[1])
   mincol <- as.numeric(loc_mat$col[1])
   
@@ -286,11 +293,13 @@ while (n>=2) {
   iteration_scores$total_distance <- iteration_scores$`number of clusters`*iteration_scores$`average distance within clusters`
   
   n <- n-1
+  print(n)
   
 }
 
-iteration_scores$iteration_scores <- (iteration_scores$`number of clusters`/max(iteration_scores$`number of clusters`))+
-  (iteration_scores$`average distance within clusters`/max(iteration_scores$`average distance within clusters`))
+k <- 0.7
+iteration_scores$iteration_scores <- k*(iteration_scores$`number of clusters`/max(iteration_scores$`number of clusters`))+
+  (1-k)*(iteration_scores$`average distance within clusters`/max(iteration_scores$`average distance within clusters`))
 mincluster <- iteration_scores[iteration_scores$iteration_scores==min(iteration_scores$iteration_scores),]$`number of clusters`
 finalclusters <- information_list[[mincluster]]
 result <- finalclusters
