@@ -47,32 +47,35 @@ punt_events_df$y <- punt_events_df$y-punt_events_df$los_y
 
 ## filtering for frames within snap and punt
 filt_punt_events_df <- punt_events_df[punt_events_df$frames_after_snap>=0 & punt_events_df$frames_after_snap<=(punt_events_df$punt_event_frame-punt_events_df$ball_snap_event_frame),]
-# max(filt_punt_events_df$frames_after_snap)
-# 
-# aggregate(frame_id~punt_id, filt_punt_events_df)
-# sort((filt_punt_events_df$frames_after_snap))
-for (frame_id in c(1:25)[1]) {
-  frame_punt_events_df <- filt_punt_events_df[filt_punt_events_df$frames_after_snap==frame_id,]
-  frame_punt_events_df<- frame_punt_events_df[order(frame_punt_events_df$y, frame_punt_events_df$x),]
-  # punt2_frame0_punting_df <- punt2_frame0_df[punt2_frame0_df$possessionTeam==punt2_frame0_df$TeamAbbr,]
-  punt_index_df <- (unique(data.frame(gameId=frame_punt_events_df$gameId, playId=frame_punt_events_df$playId)))
-  punt_index_df$punt_id <- 1:nrow(punt_index_df)
-  row.names(punt_index_df) <- NULL
-  
-  ## sets sample size
-  n <- (nrow(frame_punt_events_df)/22)-1
-  
-  ## makes list containing 3 punt dataframes for every 1 in sample
-  punts_lists <- list()
-  for (i in 1:n) {
-    spec_punt_df <- frame_punt_events_df[frame_punt_events_df$gameId==punt_index_df[i,]$gameId & frame_punt_events_df$playId==punt_index_df[i,]$playId,]
-    spec_punt_df$punt_id <- i
-    spec_punt_df <- spec_punt_df[order(spec_punt_df$y,spec_punt_df$x),]
-    spec_punt_punting_df <- spec_punt_df[spec_punt_df$possessionTeam==spec_punt_df$TeamAbbr,]
-    spec_punt_punting_df <- rbind(spec_punt_punting_df[spec_punt_punting_df$position=="P",],spec_punt_punting_df[spec_punt_punting_df$position!="P",])
-    spec_punt_punting_df <- spec_punt_punting_df[order(spec_punt_punting_df$y,spec_punt_punting_df$x),]
-    spec_punt_receiving_df <- spec_punt_df[spec_punt_df$possessionTeam!=spec_punt_df$TeamAbbr,]
-    spec_punt_receiving_df <- rbind(spec_punt_receiving_df[spec_punt_receiving_df$x==max(spec_punt_receiving_df$x),],spec_punt_receiving_df[spec_punt_receiving_df$x!=max(spec_punt_receiving_df$x),])
-    spec_punt_receiving_df <- spec_punt_receiving_df[order(spec_punt_receiving_df$y,spec_punt_receiving_df$x),]
-    punts_lists <- append(punts_lists, list(spec_punt_df, spec_punt_punting_df, spec_punt_receiving_df))
-  }
+punting_team_df <- filt_punt_events_df[filt_punt_events_df$team==filt_punt_events_df$punting_team,]
+receiving_team_df <- filt_punt_events_df[filt_punt_events_df$team!=filt_punt_events_df$punting_team,]
+
+
+
+
+
+# for (frame_id in c(1:25)[1]) {
+#   frame_punt_events_df <- filt_punt_events_df[filt_punt_events_df$frames_after_snap==frame_id,]
+#   frame_punt_events_df<- frame_punt_events_df[order(frame_punt_events_df$y, frame_punt_events_df$x),]
+#   # punt2_frame0_punting_df <- punt2_frame0_df[punt2_frame0_df$possessionTeam==punt2_frame0_df$TeamAbbr,]
+#   punt_index_df <- (unique(data.frame(gameId=frame_punt_events_df$gameId, playId=frame_punt_events_df$playId)))
+#   punt_index_df$punt_id <- 1:nrow(punt_index_df)
+#   row.names(punt_index_df) <- NULL
+#   
+#   ## sets sample size
+#   n <- (nrow(frame_punt_events_df)/22)-1
+#   
+#   ## makes list containing 3 punt dataframes for every 1 in sample
+#   punts_lists <- list()
+#   for (i in 1:n) {
+#     spec_punt_df <- frame_punt_events_df[frame_punt_events_df$gameId==punt_index_df[i,]$gameId & frame_punt_events_df$playId==punt_index_df[i,]$playId,]
+#     spec_punt_df$punt_id <- i
+#     spec_punt_df <- spec_punt_df[order(spec_punt_df$y,spec_punt_df$x),]
+#     spec_punt_punting_df <- spec_punt_df[spec_punt_df$possessionTeam==spec_punt_df$TeamAbbr,]
+#     spec_punt_punting_df <- rbind(spec_punt_punting_df[spec_punt_punting_df$position=="P",],spec_punt_punting_df[spec_punt_punting_df$position!="P",])
+#     spec_punt_punting_df <- spec_punt_punting_df[order(spec_punt_punting_df$y,spec_punt_punting_df$x),]
+#     spec_punt_receiving_df <- spec_punt_df[spec_punt_df$possessionTeam!=spec_punt_df$TeamAbbr,]
+#     spec_punt_receiving_df <- rbind(spec_punt_receiving_df[spec_punt_receiving_df$x==max(spec_punt_receiving_df$x),],spec_punt_receiving_df[spec_punt_receiving_df$x!=max(spec_punt_receiving_df$x),])
+#     spec_punt_receiving_df <- spec_punt_receiving_df[order(spec_punt_receiving_df$y,spec_punt_receiving_df$x),]
+#     punts_lists <- append(punts_lists, list(spec_punt_df, spec_punt_punting_df, spec_punt_receiving_df))
+#   }
