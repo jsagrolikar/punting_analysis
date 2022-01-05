@@ -1,9 +1,10 @@
-cluster1_compare <- "2020112212/241"
-cluster2_compare <- "2020122003/881"
-punts_to_compare <- c(cluster1_compare, cluster2_compare)
-setwd("C:/Users/pauli/Documents/GitHub/punting_analysis/testing")
+setwd("C:/Users/Jay Sagrolikar/punting_analysis/sample jaccard/")
+
+puntsinsample <- as.vector(as.character(unlist(read.csv("1iteration.csv"))))
+puntsinsample <- puntsinsample[puntsinsample!="0"]
+punts_to_compare <- c(puntsinsample)
 iteration_df <- data.frame()
-frames_to_compare <- c(8,9,10,11,12)
+frames_to_compare <- c(1, 2)
 
 blocked_punt_event_df <- tracking_sample[tracking_sample$event=="punt_blocked",]
 punt_block_event_info_df <- unique(data.frame(gameId=blocked_punt_event_df$gameId, playId=blocked_punt_event_df$playId))
@@ -27,21 +28,29 @@ for (n in frames_to_compare) {
 for (frame_id in 2:nrow(iteration_df)) {
   initial_state <- iteration_df[frame_id-1,]
   current_state <- iteration_df[frame_id,]
+  init_nclusters <- unique(as.numeric(c(initial_state)))
+  curr_nclusters <- unique(as.numeric(c(current_state)))
   
-  transition_prob_mat <- matrix(nrow=ncol(initial_state), ncol=ncol(current_state))
-  for (cluster_id in unique(as.numeric(c(initial_state)))) {
-    fill_vec <- rep(NA,ncol(current_state))
+  transition_prob_mat <- matrix(nrow=length(init_nclusters), ncol=length(curr_nclusters))
+  for (cluster_id in init_nclusters) {
+    fill_vec <- rep(NA,length(curr_nclusters))
     cluster_transition_vec <- as.numeric(c(current_state[,(which(initial_state==cluster_id))]))
     markov_transition_probabilities <- (table(cluster_transition_vec)/length(cluster_transition_vec))
-    # fill_vec[cluster_transition_vec] <- markov_transition_probabilities
-    fill_vec[which(current_state==cluster_transition_vec)] <- markov_transition_probabilities
+    fill_vec[unique(cluster_transition_vec)] <- markov_transition_probabilities
 
-    # transition_prob_mat[cluster_id,] <- fill_vec
-    transition_prob_mat[which(initial_state==cluster_id),] <- fill_vec
-    print(transition_prob_mat)
+    # fill_vec[which(current_state==cluster_transition_vec)] <- markov_transition_probabilities
+
+    transition_prob_mat[cluster_id,] <- fill_vec
+    transition_prob_mat[is.na(transition_prob_mat)] <- 0
+  
+    # transition_prob_mat[which(initial_state==cluster_id),] <- fill_vec
   }
 
 }
 
+
+for (event in markers) {
+  transition_prob_mat[cluster_id, ] <- length(iteration_df[iteration_df==cluster_id])*transition_prob_mat[cluster_id, ]
+}
 
 
