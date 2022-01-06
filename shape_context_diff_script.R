@@ -10,7 +10,8 @@ library(cluster)
 library(tidyverse)
 
 setwd("C:/Users/pauli/OneDrive - The University of Chicago/Documents/NFL Research/Big Data Bowl 2022/nfl-big-data-bowl-2022")
-tracking_sample <- read.csv("all_punts.csv")
+# tracking_sample <- read.csv("all_punts.csv")
+tracking_sample <- read.csv("1000sample.csv")
 games_df <- read.csv("games.csv")
 plays_df <- read.csv("plays.csv")
 players_df <- read.csv("players.csv")
@@ -74,7 +75,12 @@ filt_punt_events_df <- punt_events_df[punt_events_df$frames_after_snap>=0 & punt
 
 ## function for cleanliness later on
 punt_dist <- function(id1, id2, plist) {
-  bin_diff <- abs(plist[[(3*id1)-1]]$density-plist[[(3*id2)-1]]$density)+abs(plist[[(3*id1)-0]]$density-plist[[(3*id2)-0]]$density)
+  bin_diff <- (abs(plist[[(3*id1)-1]]$density-plist[[(3*id2)-1]]$density)+abs(plist[[(3*id1)-0]]$density-plist[[(3*id2)-0]]$density))
+  return(sum(bin_diff))
+}
+
+punt_dist2 <- function(id1, id2, plist, max) {
+  bin_diff <- (abs(plist[[(3*id1)-1]]$density-plist[[(3*id2)-1]]$density)+abs(plist[[(3*id1)-0]]$density-plist[[(3*id2)-0]]$density))/max
   return(sum(bin_diff))
 }
 
@@ -117,7 +123,7 @@ na.omit.list <- function(y) {
 
 
 result_list <- list()
-for (frame_id in c(5,10,15,20)) {
+for (frame_id in c(1,5,10,15,20)) {
   frame_punt_events_df <- filt_punt_events_df[filt_punt_events_df$frames_after_snap==frame_id,]
   frame_punt_events_df<- frame_punt_events_df[order(frame_punt_events_df$y, frame_punt_events_df$x),]
   # punt2_frame0_punting_df <- punt2_frame0_df[punt2_frame0_df$possessionTeam==punt2_frame0_df$TeamAbbr,]
@@ -133,29 +139,11 @@ for (frame_id in c(5,10,15,20)) {
   for (i in 1:n) {
     spec_punt_df <- frame_punt_events_df[frame_punt_events_df$gameId==punt_index_df[i,]$gameId & frame_punt_events_df$playId==punt_index_df[i,]$playId,]
     spec_punt_df$punt_id <- i
-    # spec_punt_df <- spec_punt_df[order(spec_punt_df$y,spec_punt_df$x),]
-    # spec_punt_punting_df <- spec_punt_df[spec_punt_df$possessionTeam==spec_punt_df$TeamAbbr,]
-    # spec_punt_punting_df <- rbind(spec_punt_punting_df[spec_punt_punting_df$position=="P",],spec_punt_punting_df[spec_punt_punting_df$position!="P",])
-    # spec_punt_punting_df <- spec_punt_punting_df[order(spec_punt_punting_df$y,spec_punt_punting_df$x),]
-    # spec_punt_receiving_df <- spec_punt_df[spec_punt_df$possessionTeam!=spec_punt_df$TeamAbbr,]
-    # spec_punt_receiving_df <- rbind(spec_punt_receiving_df[spec_punt_receiving_df$x==max(spec_punt_receiving_df$x),],spec_punt_receiving_df[spec_punt_receiving_df$x!=max(spec_punt_receiving_df$x),])
-    # spec_punt_receiving_df <- spec_punt_receiving_df[order(spec_punt_receiving_df$y,spec_punt_receiving_df$x),]
-    
-    punter_position_df <- spec_punt_punting_df[1,]
+
     other_punting_players_df <- spec_punt_df[spec_punt_df$team==spec_punt_df$punting_team,]
     other_punting_players_df <- other_punting_players_df[other_punting_players_df$position!="P",]
-    # other_punting_players_df$adj_x <- other_punting_players_df$x-punter_position_df$x
-    # other_punting_players_df$adj_y <- other_punting_players_df$y-punter_position_df$y
-    # other_punting_players_df$rad_angle <- atan(other_punting_players_df$adj_y/other_punting_players_df$adj_x)
-    # other_punting_players_df$deg_angle <-  other_punting_players_df$rad_angle*(180/pi)
-    # other_punting_players_df$dist_to_punter <- sqrt((other_punting_players_df$adj_x^2)+(other_punting_players_df$adj_y^2))
     
     other_receiving_players_df <- spec_punt_df[spec_punt_df$team!=spec_punt_df$punting_team,]
-    # other_receiving_players_df$adj_x <- other_receiving_players_df$x-punter_position_df$x
-    # other_receiving_players_df$adj_y <- other_receiving_players_df$y-punter_position_df$y
-    # other_receiving_players_df$rad_angle <- atan(other_receiving_players_df$adj_y/other_receiving_players_df$adj_x)
-    # other_receiving_players_df$deg_angle <-  other_receiving_players_df$rad_angle*(180/pi)
-    # other_receiving_players_df$dist_to_punter <- sqrt((other_receiving_players_df$adj_x^2)+(other_receiving_players_df$adj_y^2))
     
     punter_kd <- other_punting_players_df %>%
       with(MASS::kde2d(deg_angle, dist_to_punter, n = 100,
@@ -199,21 +187,26 @@ for (frame_id in c(5,10,15,20)) {
   information_list <- list()
   preserved_cluster <- NA
   
+  # n <- 432
   while (n>=2) {
     if (is.na(preserved_cluster)==FALSE) {
       
 
       dist_mat <- dist_mat[-unpreserved_cluster,-unpreserved_cluster]
       dist_vec1 <- c(1:(n))
-      dist_vec1 <- sapply(dist_vec1, function(x) (punt_dist(preserved_cluster, x, punts_lists)^(1-((length(ids_in_cluster))/(new_n/2)))))
+      dist_vec1 <- sapply(dist_vec1, function(x) (punt_dist2(preserved_cluster, x, punts_lists, init_mat_max)^(1-((length(ids_in_cluster))/(new_n/2)))))
       dist_vec2 <- c(rep(Inf, (preserved_cluster-1)), dist_vec1[preserved_cluster:(n)])
       dist_mat[,preserved_cluster] <- dist_vec1
       dist_mat[preserved_cluster,] <- dist_vec2
+      
       dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
+      dist_mat <- dist_mat/(max(dist_mat[dist_mat!=Inf]))
       
     } else {
       init_mat <- make_dist_mat(n, punts_lists)
+      init_mat_max <- max(init_mat[init_mat!=Inf])
       dist_mat <- init_mat
+      dist_mat <- dist_mat/init_mat_max
       print("init matrix complete")
     }
     
@@ -304,9 +297,9 @@ for (frame_id in c(5,10,15,20)) {
   result_list[[frame_id]] <- result
   
   clusters_to_save <- (iteration_scores[order(iteration_scores$iteration_scores),]$`number of clusters`)[1:100]
-  sdir <- "C:/Users/pauli/OneDrive - The University of Chicago/Documents/NFL Research/Big Data Bowl 2022/nfl-big-data-bowl-2022/saved_clusters"
+  sdir <- "C:/Users/pauli/OneDrive - The University of Chicago/Documents/NFL Research/Big Data Bowl 2022/nfl-big-data-bowl-2022/saved_clusters/"
   for(i in na.omit(clusters_to_save)) {
-    fname <- paste(as.character(frame_id), "_", as.character(which(clusters_to_save==i)[1]), "scorer.csv")
+    fname <- paste("frame", as.character(frame_id), "_", as.character(which(clusters_to_save==i)[1]), "scorer.csv", sep="")
     write.csv(information_list[[i]], paste(sdir, fname, sep=""), row.names = FALSE)
   }
   

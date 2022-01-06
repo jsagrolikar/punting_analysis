@@ -1,6 +1,6 @@
 pt_list <- list()
 rt_list <- list()
-for (selected_frame in c(1:30)) {
+for (selected_frame in c(1,5,10,15,20)) {
 #PUNT BLOCKED
 ######
 punt_blocked_events_filt_df <- punt_blocked_events_df[punt_blocked_events_df$frames_after_snap>=0 & punt_blocked_events_df$frameId<=punt_blocked_events_df$punt_event_frame,]
@@ -266,7 +266,7 @@ rt_punt_return_class4_kd_df <- rt_punt_return_class4_kd %>%
 ######
 
 
-punt_sample_df <- merge(punt_events_df, punt_info_index[sample(c(1:nrow(punt_info_index)), 500),])
+punt_sample_df <- punt_events_df
 punt_sample_df <- punt_sample_df[punt_sample_df$position!="P",]
 punt_sample_pt_df <- punt_sample_df[punt_sample_df$team==punt_sample_df$punting_team,]
 punt_sample_rt_df <- punt_sample_df[punt_sample_df$team!=punt_sample_df$punting_team,]
@@ -291,6 +291,8 @@ mean_punt_rt_kd_df <- mean_punt_rt_kd %>%
   rename("deg_angle" = "x", "dist_to_punter" = "y") %>%
   mutate(density = as.vector(mean_punt_rt_kd$z))
 
+mean_punt_pt_dens <- (mean_punt_pt_kd_df$density/sum(mean_punt_pt_kd_df$density))
+mean_punt_rt_dens <- (mean_punt_rt_kd_df$density/sum(mean_punt_rt_kd_df$density))
 pt_dens_diff_df <- data.frame(deg_angle=mean_punt_pt_kd_df$deg_angle, dist_to_punter=mean_punt_pt_kd_df$dist_to_punter, frames_after_snap=selected_frame,
                               density=abs(mean_punt_pt_dens-(pt_punt_blocked_kd_df$density/sum(pt_punt_blocked_kd_df$density)))+
                                 abs(mean_punt_pt_dens-(pt_punt_downed_kd_df$density/sum(pt_punt_blocked_kd_df$density)))+

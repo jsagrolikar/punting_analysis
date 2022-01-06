@@ -1,6 +1,5 @@
-unique(tracking_sample$event)
 setwd("C:/Users/pauli/OneDrive - The University of Chicago/Documents/NFL Research/Big Data Bowl 2022/nfl-big-data-bowl-2022")
-tracking_sample <- read.csv("all_punts.csv")
+tracking_sample <- read.csv("1000sample.csv")
 games_df <- read.csv("games.csv")
 plays_df <- read.csv("plays.csv")
 players_df <- read.csv("players.csv")
@@ -459,7 +458,7 @@ mean_npunt_return_class4 <- anti_join(punt_events_df_no_punter,punt_return_class
 
 
 
-p1 <- ggplot(pt_dens_diff_df,aes(deg_angle, dist_to_punter, fill = density))+
+p1 <- ggplot(t_dens_diff_df,aes(deg_angle, dist_to_punter, fill = density))+
   geom_raster()+scale_fill_viridis(option="inferno")+
   xlab("x")+ylab("z")+
   theme(panel.background = element_blank())
