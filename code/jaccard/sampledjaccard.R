@@ -86,8 +86,6 @@ na.omit.list <- function(y) {
   return(y[!sapply(y, function(x) all(is.na(x)))]) 
 }
 
-wd <- "C:/Users/Jay Sagrolikar/punting_analysis/data"
-setwd(wd)
 og_sample <- read.csv("all_tracking.csv")
 tracking_sample <- og_sample[0, ]
 indices <- read.csv("resultsandids.csv")
@@ -353,7 +351,7 @@ for (frame_id in c(22:25)) {
       }
     }
     
-    dir <- "C:/Users/Jay Sagrolikar/punting_analysis/sample jaccard/"
+    dir <- ""
     filename <- paste(as.character(frame_id), "iteration.csv", sep="")
     fname2 <- paste(as.character(frame_id), "scores.csv")
     print("Frame Iteration")

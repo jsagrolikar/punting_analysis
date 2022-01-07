@@ -70,33 +70,6 @@ mdmat <- function(p, plist) {
   return(dist_mat)
 }
 
-## clusters sample into 1 group step-by-step
-## currently prints distance matrices as we go
-
-# ## function for cleanliness later on
-# punt_dist <- function(id1, id2, plist) {
-#   total_cluster_distance <- (sqrt(((plist[[(3*id1)-1]]$x-plist[[(3*id2)-1]]$x)^2)+((plist[[(3*id1)-1]]$y-plist[[(3*id2)-1]]$y)^2)))+
-#     (sqrt(((plist[[(3*id1)-0]]$x-plist[[(3*id2)-0]]$x)^2)+((plist[[(3*id1)-0]]$y-plist[[(3*id2)-0]]$y)^2)))
-#   # print(total_cluster_distance)
-#   # print(sum(total_cluster_distance))
-#   # summed_cluster_distance <- (unname(tapply(total_cluster_distance, (seq_along(total_cluster_distance)-1) %/% 11, sum)))
-#   return(sum(total_cluster_distance))
-# }
-
-# make_dist_mat <- function(p, plist) {
-#   ## calculates distance matrix for punts left in the list 
-#   dist_mat <- matrix(nrow=p, ncol=p)
-#   # dist_mat <- outer(1:p, 1:p, Vectorize(function(x, y) punt_dist(x, y, plist)))
-#   for (i in 1:(p-1)) {
-#     dist_mat[i, ] <- c(1:p)
-#     vec <- sapply(dist_mat[i, (i+1):p], function(x) punt_dist(i, x, plist))
-#     dist_mat[i, ] <- c(rep(Inf, i), vec)
-#   }
-#   ## removes zeroes
-#   dist_mat[lower.tri(dist_mat, diag=TRUE)] <- Inf
-#   return(dist_mat)
-# }
-
 clusterdistance <- function(p, idlist, initmat) {
   ## calculates distance matrix for punts left in the list 
   im <- initmat
@@ -118,9 +91,6 @@ na.omit.list <- function(y) {
   return(y[!sapply(y, function(x) all(is.na(x)))]) 
 }
 
-wd <- "C:/Users/Jay Sagrolikar/punting_analysis/data"
-setwd(wd)
-# tracking_sample <- read.csv("tracking2020.csv")
 tracking_sample <- read.csv("all_tracking.csv")
 # og_sample <- tracking_sample
 # tracking_sample <- tracking_sample[tracking_sample$playId %in% unique(tracking_sample$playId)[1:220],]
@@ -343,7 +313,7 @@ for (frame_id in c(1:25)) {
       }
     }
     
-    dir <- "C:/Users/Jay Sagrolikar/punting_analysis/jaccard testing/"
+    dir <- ""
     filename <- paste(as.character(frame_id), "iteration.csv", sep="")
     fname2 <- paste(as.character(frame_id), "scores.csv")
     print("Frame Iteration")

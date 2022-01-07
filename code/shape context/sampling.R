@@ -13,6 +13,6 @@ for (i in index_list) {
   tracking_sample <- rbind(tracking_sample, testsample)
 }
 
-sdir <- "C:/Users/pauli/OneDrive - The University of Chicago/Documents/NFL Research/Big Data Bowl 2022/nfl-big-data-bowl-2022/"
+sdir <- ""
 fname <- "2250sample.csv"
 write.csv(tracking_sample, paste(sdir, fname, sep=""), row.names = FALSE)

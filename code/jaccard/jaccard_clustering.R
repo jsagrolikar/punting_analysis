@@ -103,8 +103,6 @@ na.omit.list <- function(y) {
   return(y[!sapply(y, function(x) all(is.na(x)))]) 
 }
 
-wd <- "C:/Users/Jay Sagrolikar/punting_analysis/data"
-setwd(wd)
 # tracking_sample <- read.csv("tracking2020.csv")
 tracking_sample <- read.csv("2020_reduced.csv")
 # tracking_sample <- tracking_sample[tracking_sample$playId %in% unique(tracking_sample$playId)[1:220],]
