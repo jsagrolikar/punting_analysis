@@ -1,11 +1,11 @@
 library(gganimate)
 library(cowplot)
 setwd("C:/Users/pauli/OneDrive - The University of Chicago/Documents/NFL Research/Big Data Bowl 2022/nfl-big-data-bowl-2022")
-tracking_sample <- read.csv("1000sample.csv")
+tracking_sample <- read.csv("sampleplay.csv")
 games_df <- read.csv("games.csv")
 plays_df <- read.csv("plays.csv")
 players_df <- read.csv("players.csv")
-game_play_id <- "2019091900/155"
+game_play_id <- "2020110808/2859"
 inp_gameId <- strsplit(game_play_id, split="/")[[1]][1]
 inp_playId <- strsplit(game_play_id, split="/")[[1]][2]
 tracking_sample <- tracking_sample[tracking_sample$gameId==inp_gameId & tracking_sample$playId==inp_playId,]
@@ -60,7 +60,7 @@ punt_events_df$adj_y <- punt_events_df$y-punt_events_df$punter_y
 punt_events_df$rad_angle <- atan(punt_events_df$adj_y/punt_events_df$adj_x)
 punt_events_df$deg_angle <-  punt_events_df$rad_angle*(180/pi)
 punt_events_df$dist_to_punter <- sqrt((punt_events_df$adj_x^2)+(punt_events_df$adj_y^2))
-punt_events_df$x <-punt_events_df$x+15
+punt_events_df$x <-punt_events_df$x+100
 punt_events_df$y <-punt_events_df$y+160/6
 
 example.play <- punt_events_df[punt_events_df$frames_after_snap>=0 & punt_events_df$frames_after_snap<=(punt_events_df$punt_event_frame-punt_events_df$ball_snap_event_frame),]
@@ -80,11 +80,13 @@ df.hash <- expand.grid(x = c(0, 23.36667, 29.96667, xmax), y = (10:110))
 df.hash <- df.hash %>% filter(!(floor(y %% 5) == 0))
 df.hash <- df.hash %>% filter(y < ymax, y > ymin)
 
+scale <- (((max(example.play$jaccardradius)-min(example.play$jaccardradius))/283)*0:283+1)*5
+#scale <- sort(example.play$jaccardradius)*10
 animate.play <- ggplot() +
-  scale_size_manual(values = c(6, 4, 6), guide = FALSE) + 
+  scale_size_manual(values = c(scale), guide = FALSE) + 
   scale_shape_manual(values = c(21, 16, 21), guide = FALSE) +
-  scale_fill_manual(values = c("#e31837", "#654321", "#002244"), guide = FALSE) + 
-  scale_colour_manual(values = c("black", "#654321", "#c60c30"), guide = FALSE) + 
+  # scale_fill_manual(values = c("#e31837", "#0073cf", "#0073cf"), guide = FALSE) + 
+  scale_colour_manual(values = c("black", "#0073cf", "#c60c30"), guide = FALSE) + 
   annotate("text", x = df.hash$x[df.hash$x < 55/2], 
            y = df.hash$y[df.hash$x < 55/2], label = "_", hjust = 0, vjust = -0.2) + 
   annotate("text", x = df.hash$x[df.hash$x > 55/2], 
@@ -103,10 +105,10 @@ animate.play <- ggplot() +
            y = c(ymin, ymax, ymax, ymin), 
            xend = c(xmin, xmax, xmax, xmin), 
            yend = c(ymax, ymax, ymin, ymin), colour = "black") + 
-  geom_point(data = example.play, size=5,aes(x = (xmax-y), y = x, 
-                                      fill = team, group = nflId, colour = team), alpha = 0.7) + 
+  geom_point(data = example.play, aes(x = (xmax-y), y = x, 
+                                      fill = team, colour = team, size = as.factor(jaccardradius)), alpha = 0.7) + 
   geom_text(data = example.play, aes(x = (xmax-y), y = x, label = jerseyNumber), colour = "white", 
-            vjust = 0.36, size = 3.5) + 
+            vjust = 0.36, size = 3.5) + theme(legend.position = "bottom")+
   ylim(ymin, ymax) + 
   coord_fixed() +  
   theme_nothing() + 
